@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <cstdio>
 #include <map>
@@ -25,6 +26,7 @@ public:
     {
         syslog(LOG_INFO, "Programm is exiting");
         close(m_pidFile);
+        system("rm -rf proc.pid");
     }
 
     static void sigtermActionHandler(int)
@@ -42,37 +44,34 @@ public:
             auto pos = line.find('=');
             s_confMap[line.substr(0, pos)] = line.substr(pos + 1, line.size() - pos);
         }
+        m_cat1 = s_confMap["catalogue1"];
+        m_cat2 = s_confMap["catalogue2"];
+    }
+
+    void doAction()
+    {
+        std::string command = std::string("mv ") + m_cat1 + std::string("/* ") +
+                              m_cat2 + std::string(" > /dev/null 2>&1");
+        m_cat1.swap(m_cat2);
+        system(command.c_str());
     }
 
     void setupTimer()
     {
-        //std::cout << std::stoi(s_confMap["interval"]) << std::endl;
-        struct itimerval daemonTimer;
-        daemonTimer.it_value.tv_sec     = std::stoi(s_confMap["interval"]);
-        daemonTimer.it_value.tv_usec    = 0;
-        daemonTimer.it_interval.tv_sec  = std::stoi(s_confMap["interval"]);
-        daemonTimer.it_interval.tv_usec = 0;
-        setitimer(ITIMER_REAL, &daemonTimer, nullptr);
-
         struct sigaction hupAction;
         hupAction.sa_handler = &Daemon::readConfigFile;
         hupAction.sa_flags = SA_RESTART;
-        sigaction(SIGINT, &hupAction, nullptr);
+        sigaction(SIGHUP, &hupAction, nullptr);
+
         struct sigaction termAction;
         termAction.sa_handler = &Daemon::sigtermActionHandler;
         termAction.sa_flags = SA_RESTART;
         sigaction(SIGTERM, &termAction, nullptr);
-
-        struct sigaction alarmAction;
-        alarmAction.sa_handler = &Daemon::readConfigFile;
-        alarmAction.sa_flags = SA_RESTART;
-        sigaction(SIGALRM, &alarmAction, nullptr);
     }
 
     void runDaemon()
     {
         const char* pidfile = "proc.pid";
-        int i;
         if (getppid() == 1) {
             return;
         }
@@ -83,19 +82,24 @@ public:
         if (pid > 0) {
             std::exit(0);
         }
-        //umask(027);
         int sid = setsid();
         if (sid < 0) {
             std::exit(-1);
         }
-        m_pidFile = open(pidfile, O_RDWR|O_CREAT, 0600);
+        m_pidFile = open(pidfile, O_RDWR | O_CREAT, 0600);
         if (m_pidFile == -1) {
             syslog(LOG_INFO, "Could not open PID lock file %s, exiting", pidfile);
             std::exit(-1);
         }
-        if (lockf(m_pidFile,F_TLOCK,0) == -1) {
-            syslog(LOG_INFO, "Could not lock PID lock file %s, exiting", pidfile);
-            std::exit(-1);
+        char buff[10] = {};
+        if (lockf(m_pidFile, F_TLOCK, 0) == -1) {
+            syslog(LOG_INFO, "Daemon is currently running swapping the process");
+        }
+        read(m_pidFile, buff, 10);
+        struct stat sts;
+        if (stat(std::string(std::string("/proc/") + std::string(buff)).c_str(), &sts) != -1) {
+            system(std::string(std::string("kill -9 ") + std::string(buff) + std::string(" > /dev/null 2>&1")).c_str());
+            lseek(m_pidFile, 0, SEEK_DATA);
         }
         std::string str = std::to_string(getpid());
         write(m_pidFile, str.c_str(), str.size());
@@ -106,16 +110,22 @@ public:
         readConfigFile(0);
         setupTimer();
         runDaemon();
+        auto interval = std::stoi(s_confMap["interval"]);
         while (!g_exit) {
-            sleep(10);
+            sleep(interval);
+            doAction();
         }
     }
 
 private:
     int m_pidFile;
+    static std::string m_cat1;
+    static std::string m_cat2;
     static std::map<std::string, std::string> s_confMap;
 };
 
+std::string Daemon::m_cat1;
+std::string Daemon::m_cat2;
 std::map<std::string, std::string> Daemon::s_confMap;
 
 int main(int argc, char** argv)
