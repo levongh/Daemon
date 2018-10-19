@@ -1,24 +1,37 @@
 #pragma once
 #include <map>
 
+/**
+ * @class  Daemon
+ * @file   daemon.h
+ * @brief  TODO add class description
+ * @author Levon Ghukasyan
+ */
 class Daemon
 {
 public:
+    //!@brief constructor
     Daemon(int argc, char** argv);
 
+    //!@brief destructor
     ~Daemon();
 
+    //!@brief function to handle SIGTERM signals
     static void sigtermActionHandler(int);
 
+    //!@brief function to handle SIGTERM signals
     static void readConfigFile(int);
 
     void doAction();
 
-    void setupTimer();
+    //!@brief set signal handlers
+    void setupHandlers();
 
+    //!@brief daemonize the object
+    void daemonize();
+
+    //!@brief function designed to run the daemon
     void run();
-
-    void setup();
 
 private:
     int m_pidFile;

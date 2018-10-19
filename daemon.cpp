@@ -55,7 +55,7 @@ void Daemon::doAction()
     system(command.c_str());
 }
 
-void Daemon::setupTimer()
+void Daemon::setupHandlers()
 {
     struct sigaction hupAction;
     hupAction.sa_handler = &Daemon::readConfigFile;
@@ -68,11 +68,11 @@ void Daemon::setupTimer()
     sigaction(SIGTERM, &termAction, nullptr);
 }
 
-void Daemon::setup()
+void Daemon::run()
 {
     readConfigFile(0);
-    setupTimer();
-    run();
+    setupHandlers();
+    daemonize();
     auto interval = std::stoi(s_confMap["interval"]);
     while (!g_exit) {
         sleep(interval);
@@ -80,7 +80,7 @@ void Daemon::setup()
     }
 }
 
-void Daemon::run()
+void Daemon::daemonize()
 {
     const char* pidfile = "proc.pid";
     if (getppid() == 1) {
