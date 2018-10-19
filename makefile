@@ -1,20 +1,27 @@
 CC = g++
-CPPFLAGS = -O3 -std=c++14 -Wall -Werror -Wno-unused-result
-HEADERS = daemon.h
-SOURCES = daemon.cpp main.cpp
-
-OBJECTS = $(SOURCES:.cpp=.o)
+SUBDIRS    = src
+OBJDIR     = obj
+BINDIR     = bin
+DOXY       = ./docs/doxy
+OBJECTS    = $(SOURCES:.cpp:=.o)
 EXECUTABLE = Daemon 
+CPPFLAGS   = -O3 -std=c++14
+LDFLAGS    =
 
-all: $(EXECUTABLE)
+MOVED_OBJECTS =  $(addprefix $(OBJDIR)/, $(OBJECTS))
 
-$(EXECUTABLE): $(OBJECTS) $(HEADERS)
-	$(CC) $(OBJECTS) -o $@
+.PHONY : all clean doxygen
 
-$(OBJECTS): $(HEADERS)
+all: $(OBJECTS)
+	mkdir -p $(OBJDIR)
+	mkdir -p $(BINDIR)
+	mkdir -p $(DOXY)
+	$(foreach subdir, $(SUBDIRS), cd $(subdir); make all; cd ../;)
+	$(CC) $(OBJDIR)/* $(LDFLAGS) -o $(EXECUTABLE)
+	mv $(EXECUTABLE) $(BINDIR)
 
-%.o : %.cpp
-	$(CC) $(CPPFLAGS) $(SOURCES) -c
-
+doxygen:
+	@doxygen	./docs/Doxyfile
 clean:
-	rm -rf $(EXECUTABLE) $(OBJECTS)
+	rm -rf $(BINDIR) $(OBJDIR) $(DOXY)
+	$(foreach subdir,$(SUBDIRS), cd $(subdir); make clean; cd ../;)
