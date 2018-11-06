@@ -73,9 +73,9 @@ enum class StatusCode
     server_error_network_authentication_required
 };
 
-inline const std::map<StatusCode, std::string> &status_code_strings()
+inline const std::map<StatusCode, std::string> &statusCodeStrings()
 {
-    static const std::map<StatusCode, std::string> status_code_strings = {
+    static const std::map<StatusCode, std::string> statusCodeStrings = {
         {StatusCode::unknown, ""},
         {StatusCode::information_continue, "100 Continue"},
         {StatusCode::information_switching_protocols, "101 Switching Protocols"},
@@ -138,7 +138,7 @@ inline const std::map<StatusCode, std::string> &status_code_strings()
         {StatusCode::server_error_loop_detected, "508 Loop Detected"},
         {StatusCode::server_error_not_extended, "510 Not Extended"},
         {StatusCode::server_error_network_authentication_required, "511 Network Authentication Required"}};
-    return status_code_strings;
+    return statusCodeStrings;
 }
 
 class StringToStatusCode : public std::unordered_map<std::string, StatusCode>
@@ -146,13 +146,13 @@ class StringToStatusCode : public std::unordered_map<std::string, StatusCode>
 public:
     StringToStatusCode()
     {
-        for (const auto& status : status_code_strings()) {
+        for (const auto& status : statusCodeStrings()) {
             emplace(status.second, status.first);
         }
     }
 };
 
-inline StatusCode status_code(const std::string& status) noexcept
+inline StatusCode statusCode(const std::string& status) noexcept
 {
     static StringToStatusCode stringToStatusCode;
     auto pos = stringToStatusCode.find(status);
@@ -160,6 +160,17 @@ inline StatusCode status_code(const std::string& status) noexcept
         return pos->second;
     }
     return StatusCode::unknown;
+}
+
+inline const std::string& statusCode(StatusCode statusCodeEnum) noexcept
+{
+    auto pos = statusCodeStrings.find(statusCodeEnum);
+    if (pos != statusCodeStrings().end()) {
+        return pos->second;
+    } else {
+        static std::string emptyString;
+        return emptyString;
+    }
 }
 
 } // namespace server
