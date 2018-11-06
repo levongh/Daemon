@@ -141,5 +141,26 @@ inline const std::map<StatusCode, std::string> &status_code_strings()
     return status_code_strings;
 }
 
+class StringToStatusCode : public std::unordered_map<std::string, StatusCode>
+{
+public:
+    StringToStatusCode()
+    {
+        for (const auto& status : status_code_strings()) {
+            emplace(status.second, status.first);
+        }
+    }
+};
+
+inline StatusCode status_code(const std::string& status) noexcept
+{
+    static StringToStatusCode stringToStatusCode;
+    auto pos = stringToStatusCode.find(status);
+    if (pos != stringToStatusCode.end()) {
+        return pos->second;
+    }
+    return StatusCode::unknown;
+}
+
 } // namespace server
 
