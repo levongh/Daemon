@@ -13,16 +13,8 @@ class CaseInsensitiveEqual
 {
 public:
 
-    static inline bool caseInsensitiveEqual(const std::string& lhs,
-                                            const std::string& rhs) noexcept
-    {
-        if (lhs.size() == rhs.size()) {
-            return std::equal(lhs.begin(), lhs.end(), rhs.begin(), [](char a, char b) {
-                    return std::tolower(a) == std::tolower(b);
-                    });
-        }
-        return false;
-    }
+    static bool caseInsensitiveEqual(const std::string& lhs,
+                                     const std::string& rhs) noexcept;
 
     bool operator()(const std::string& lhs, const std::string& rhs) const noexcept
     {
@@ -43,6 +35,19 @@ public:
         }
         return h;
     }
+};
+
+using CaseInsensitiveMultimap = std::unordered_map<std::string, std::string, CaseInsensitiveHash, CaseInsensitiveEqual>;
+
+class Percent
+{
+public:
+    ///@ Returns percent-encoded string
+    static std::string encode(const std::string& value) noexcept;
+
+    ///@ Returns percent-decoded string
+    static std::string decode(const std::string& value) noexcept;
+
 };
 
 } //namespace server
