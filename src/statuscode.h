@@ -154,9 +154,9 @@ public:
 
 inline StatusCode statusCode(const std::string& status) noexcept
 {
-    static StringToStatusCode stringToStatusCode;
-    auto pos = stringToStatusCode.find(status);
-    if (pos != stringToStatusCode.end()) {
+    static StringToStatusCode stringToStatusCodes;
+    auto pos = stringToStatusCodes.find(status);
+    if (pos != stringToStatusCodes.end()) {
         return pos->second;
     }
     return StatusCode::unknown;
@@ -164,7 +164,7 @@ inline StatusCode statusCode(const std::string& status) noexcept
 
 inline const std::string& statusCode(StatusCode statusCodeEnum) noexcept
 {
-    auto pos = statusCodeStrings.find(statusCodeEnum);
+    auto pos = statusCodeStrings().find(statusCodeEnum);
     if (pos != statusCodeStrings().end()) {
         return pos->second;
     } else {

@@ -1,5 +1,6 @@
 SOURCS = main.cpp \
-         daemon.cpp
+         daemon.cpp \
+         utility.cpp
 
 OBJDIR = ../obj
 OBJECTS = $(SOURCS:.cpp=.o)

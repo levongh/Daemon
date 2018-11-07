@@ -1,5 +1,6 @@
 #include "utility.h"
 
+using namespace server;
 
 bool CaseInsensitiveEqual::caseInsensitiveEqual(const std::string& lhs,
                                                 const std::string& rhs) noexcept
@@ -21,7 +22,7 @@ std::string Percent::encode(const std::string& value) noexcept
 
     for (auto& chr : value) {
         if(!((chr >= '0' && chr <= '9') || (chr >= 'A' && chr <= 'Z') || (chr >= 'a' && chr <= 'z') || chr == '-' || chr == '.' || chr == '_' || chr == '~')) {
-            result += std::string("%") + hex_chars[static_cast<unsigned char>(chr) >> 4] + hex_chars[static_cast<unsigned char>(chr) & 15];
+            result += std::string("%") + hexChars[static_cast<unsigned char>(chr) >> 4] + hexChars[static_cast<unsigned char>(chr) & 15];
         }  else {
             result += chr;
         }
