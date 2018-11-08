@@ -1,5 +1,7 @@
 #pragma once
 
+namespace server {
+
 ///@brief Percent encoding and decoding
 class Percent
 {
@@ -44,3 +46,4 @@ public:
 
 };
 
+} //namespace server

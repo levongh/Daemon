@@ -1,5 +1,7 @@
 #pragma once
 
+namespace server {
+
 class HttpHeader
 {
 public:
@@ -25,3 +27,5 @@ public:
 
     }
 };
+
+} //namespace server

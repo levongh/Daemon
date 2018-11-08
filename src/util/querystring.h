@@ -1,5 +1,7 @@
 #pragma once
 
+namespace server {
+
 ///@brief Query string creation and parsing
 class QueryString
 {
@@ -55,3 +57,4 @@ public:
 };
 
 
+} //namespace server

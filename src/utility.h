@@ -38,8 +38,10 @@ public:
 
 using CaseInsensitiveMultimap = std::unordered_map<std::string, std::string, CaseInsensitiveHash, CaseInsensitiveEqual>;
 
+} //namespace server
+
+
 #include "util/percent.h"
 #include "util/querystring.h"
 #include "util/httpheader.h"
-
-} //namespace server
+#include "util/lock.h"
