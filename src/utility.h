@@ -40,5 +40,6 @@ using CaseInsensitiveMultimap = std::unordered_map<std::string, std::string, Cas
 
 #include "percent.h"
 #include "querystring.h"
+#include "httpheader.h"
 
 } //namespace server
