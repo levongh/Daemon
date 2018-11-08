@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+#include <atomic>
+
 #ifdef __SSE2__
 #include <emmintrin.h>
 
