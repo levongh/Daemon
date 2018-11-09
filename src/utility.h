@@ -7,3 +7,4 @@
 #include "util/httpheader.h"
 #include "util/lock.h"
 #include "util/message.h"
+#include "util/field.h"
