@@ -7,6 +7,8 @@
  * @author Levon Ghukasyan
  */
 
+#include "utility.h"
+
 class Server
 {
 public:

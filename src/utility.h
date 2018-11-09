@@ -6,3 +6,4 @@
 #include "util/querystring.h"
 #include "util/httpheader.h"
 #include "util/lock.h"
+#include "util/message.h"
