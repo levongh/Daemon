@@ -79,6 +79,26 @@ public:
             return m_streambuf.size();
         }
 
+        ///@brief Use this function if you need to recursively send parts of a longer message
+        void send(const std::function<void(const error_code&)>& callback = nullptr) noexcept
+        {
+            m_session->connection->set_timeout(m_timeoutContent);
+            auto self = this->shared_from_this();  /// Keep Response instance alive through the following async_write
+            asio::async_write(*session->connection->socket, streambuf, [self, callback](const error_code &ec, std::size_t /*bytes_transferred*/) {
+                    self->session->connection->cancel_timeout();
+                    auto lock = self->session->connection->handler_runner->continue_lock();
+                    if(!lock)
+                        return;
+                    if(callback)
+                        callback(ec);
+             });
+        }
+
+        ///@brief Write directly to stream buffer using std::ostream::write
+        void write(const char_type* ptr, std::streamsize n)
+        {
+            std::ostream::write(ptr, n);
+        }
     };
 
 };
