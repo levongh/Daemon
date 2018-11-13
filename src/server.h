@@ -8,6 +8,7 @@
  */
 
 #include "utility.h"
+#include "httpserver.h"
 
 class Server
 {

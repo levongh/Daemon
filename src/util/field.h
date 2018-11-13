@@ -14,7 +14,7 @@ public:
         CaseInsensitiveMultimap result;
         size_t nameStartPos = std::string::npos;
         size_t nameEndPos = std::string::npos;
-        size_t valueStartPos = std::stirng::npos;
+        size_t valueStartPos = std::string::npos;
         for (size_t c = 0; c < str.size(); ++c) {
             if (nameStartPos == std::string::npos) {
                 if (str[c] != ' ' && str[c] != ';') {
@@ -23,7 +23,7 @@ public:
             } else {
                 if (nameEndPos == std::string::npos) {
                     if (str[c] == ';') {
-                        result.emplace(str.substr(nameStartPos, c - nameStartPos), std::string);
+                        result.emplace(str.substr(nameStartPos, c - nameStartPos), std::string());
                         nameStartPos = std::string::npos;
                     } else if (str[c] == '=') {
                         nameEndPos = c;
@@ -31,7 +31,7 @@ public:
                 } else {
                     if (valueStartPos == std::string::npos) {
                         if (str[c] == '"' && c + 1 < str.size()) {
-                            valueStartPos = c + q;
+                            valueStartPos = c + 1;
                         } else {
                             valueStartPos = c;
                         }
@@ -42,7 +42,7 @@ public:
                 }
             }
         }
-        if (nameStartPos != std::sting::npos) {
+        if (nameStartPos != std::string::npos) {
             if (nameEndPos == std::string::npos) {
                 result.emplace(str.substr(nameStartPos), std::string());
             } else if (valueStartPos != std::string::npos) {
