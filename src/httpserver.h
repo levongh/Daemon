@@ -197,6 +197,33 @@ public:
         {}
     };
 
+    class Request
+    {
+        friend class ServerBase<SocketType>;
+        friend class Server<SocketType>;
+        friend class Session;
+
+    public:
+        std::string m_method, m_path, m_queryString, m_httpVersion;
+        Content m_content;
+        CaseInsensitiveMultimap m_header;
+        regex::smatch m_pathMatch;
+        std::shared_ptr<asio::ip::tcp::endpoint> m_remoteEndpoint;
+
+        ///@brief The time when the request header was fully read.
+        std::chrono::system_clock::time_point m_headerReadtime;
+
+    private:
+        asio::streambuf m_streambuf;
+
+        Request(size_t maxRequestStreambufSize, std::shared_ptr<asio::ip::tcp::endpoint> remoteEndpoint) noexcept
+            : m_streambuf(maxRequestStreambufSize),
+            , m_content(m_streambuf)
+            , m_remoteEndpoint(std:move(remoteEndpoint));
+        {
+        }
+    };
+
 };
 
 } //namespace server
