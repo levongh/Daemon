@@ -204,6 +204,27 @@ public:
         friend class Session;
 
     public:
+        std::string remoteEndpointAddress() noexcept
+        {
+            try {
+                return m_remoteEndpoint->address().to_string();
+            } catch (...) {
+                std::string();
+            }
+        }
+
+        unsigned short remoteEndpointPort() noexcept
+        {
+            return m_remoteEndpoint->port();
+        }
+
+        ///@brief Returns query keys with percent-decoded values;
+        CaseInsensitiveMultimap parseQueryString() noexcept
+        {
+            return QueryString::parse(m_queryString);
+        }
+
+    public:
         std::string m_method, m_path, m_queryString, m_httpVersion;
         Content m_content;
         CaseInsensitiveMultimap m_header;
@@ -211,7 +232,7 @@ public:
         std::shared_ptr<asio::ip::tcp::endpoint> m_remoteEndpoint;
 
         ///@brief The time when the request header was fully read.
-        std::chrono::system_clock::time_point m_headerReadtime;
+        std::chrono::system_clock::time_point m_headerReadTime;
 
     private:
         asio::streambuf m_streambuf;
