@@ -180,8 +180,8 @@ public:
             try {
                 std::string str;
                 auto size = m_streambuf.size();
-                str.resizable(size);
-                read(&str[0], static_cast<std::stremsize>(size));
+                str.resize(size);
+                read(&str[0], static_cast<std::streamsize>(size));
                 return str;
             } catch (...) {
                 return std::string();
@@ -191,7 +191,7 @@ public:
     private:
         asio::streambuf& m_streambuf;
 
-        Content(asio::streambuf& sreambuf) noexcept
+        Content(asio::streambuf& streambuf) noexcept
             : std::istream(&streambuf)
             , m_streambuf(streambuf)
         {}
@@ -217,9 +217,9 @@ public:
         asio::streambuf m_streambuf;
 
         Request(size_t maxRequestStreambufSize, std::shared_ptr<asio::ip::tcp::endpoint> remoteEndpoint) noexcept
-            : m_streambuf(maxRequestStreambufSize),
+            : m_streambuf(maxRequestStreambufSize)
             , m_content(m_streambuf)
-            , m_remoteEndpoint(std:move(remoteEndpoint));
+            , m_remoteEndpoint(std::move(remoteEndpoint))
         {
         }
     };
