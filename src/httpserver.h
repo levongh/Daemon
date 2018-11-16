@@ -298,6 +298,25 @@ protected:
         std::unique_ptr<asio::steady_timer> m_timer;
         std::shared_ptr<asio::ip::tcp::endpoint> m_remoteEndpoint;
     };
+
+    class Session
+    {
+    public:
+        Session(size_t maxRequestStreambufSize, std::shared_ptr<Connection> connection) noexcept
+            : m_connection(std::move(connection))
+        {
+            if (m_connection->remoteEndpoint) {
+                error_code ec;
+                m_connection->remoteEndpoint = std::make_shared<asio::ip::tcp::endpoint>(
+                        m_connection->m_socket->lowest_layer().remote_endpoint(ec));
+            }
+            m_request = std::shared_ptr<Request>(new Request(maxRequestStreambufSize, m_connection->remoteEndpoint));
+        }
+
+    public:
+        std::shared_ptr<Connection> m_connection;
+        std::shared_ptr<Request> m_request;
+    };
 };
 
 } //namespace server
