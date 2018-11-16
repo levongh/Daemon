@@ -317,6 +317,77 @@ protected:
         std::shared_ptr<Connection> m_connection;
         std::shared_ptr<Request> m_request;
     };
+
+public:
+    class Config
+    {
+        friend class ServerBase<SocketType>;
+
+        Config(unsigned short port) noexcept
+            : m_port(port)
+        {
+        }
+
+    public:
+        /**
+         * @brief Port number to use. Defaults to 80 for HTTP and 443 for HTTPS.
+         * Set 0 to get an assigned port
+         */
+        unsigned short m_port;
+
+        /**
+         * @brief if io_sevice is not set, number of threads that the server will use then start() is called
+         * Default is 1 thread
+         */
+        size_t m_threadPoolSize = 1;
+        ///@brief Timeout on request handling. Defaults to 5 seconds
+        long m_timeoutRequest = 5;
+        ///@brief Timeout on content handling. Defaults to 300 seconds
+        long m_timeoutRequst = 300;
+        /**
+         * @brief Maximum size of request stream buffer. Defualts to architecture maximum.
+         * Reacting this limit will result in a message size error code
+         */
+        size_t m_maxRequestStreambufSize = std::numeric_limits<size_t>::max();
+
+        /**
+         * @brief IPv4 address in dotted decimal form or IPv6 address in hexadecimal notation.
+         * If empty, the address will be any address.
+         */
+        std::string m_address;
+
+        /**
+         * @brief Set to false to avoid binding the socket to an address that is already in use.
+         * Default is true.
+         */
+        bool m_reuseSddress = false;
+    };
+
+    ///@brief Set before calling start().
+    Config m_config;
+
+private:
+    class regex_orderable : public regex::regex
+    {
+    public:
+        regex_orderable(const char* regexCstr)
+            : regex::regex(regexCstr)
+            , m_str(regexCstr)
+        {}
+
+        regex_orderable(std::string regexStr)
+            : regex::regex(regexStr)
+            , m_str(regexStr)
+        {}
+
+        bool operator<(const regex_orderable& rhs) const noexcept
+        {
+            return m_str < rhs.m_str;
+        }
+
+    private:
+        std::string m_str;
+    };
 };
 
 } //namespace server
