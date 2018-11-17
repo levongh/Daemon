@@ -2,7 +2,8 @@
 
 namespace server {
 
-    class Session;
+template <typename SocketType>
+class Session;
 
 template <typename SocketType>
 class Server;
@@ -108,10 +109,10 @@ private:
     friend class Server<SocketType>;
 
     asio::streambuf m_streambuf;
-    std::shared_ptr<Session> m_session;
+    std::shared_ptr<Session<SocketType> > m_session;
     long m_timeoutContent;
 
-    Response(std::shared_ptr<Session> session, long timeoutContent) noexcept
+    Response(std::shared_ptr<Session<SocketType> > session, long timeoutContent) noexcept
         : std::ostream(&m_streambuf)
         , m_session(std::move(session))
         , m_timeoutContent(timeoutContent)
