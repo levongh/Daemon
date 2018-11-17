@@ -2,7 +2,9 @@
 
 #include "utility.h"
 
+#include <thread>
 #include <mutex>
+#include <unordered_set>
 
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -88,7 +90,7 @@ public:
             auto self = this->shared_from_this();  /// Keep Response instance alive through the following async_write
             asio::async_write(*m_session->connection->socket, m_streambuf, [self, callback](const error_code &ec, std::size_t /*bytes_transferred*/) {
                     self->m_session->connection->cancel_timeout();
-                    auto lock = self->m_session->connection->handler_runner->continue_lock();
+                    auto lock = self->m_session->connection->m_handlerRunner->continue_lock();
                     if(!lock)
                         return;
                     if(callback)
@@ -388,6 +390,156 @@ private:
     private:
         std::string m_str;
     };
+
+public:
+    ///@brief Warning: do not add or remove resources after start() is called
+    std::map<regex_orderable, std::map<std::string, std::function<void(std::shared_ptr<typename ServerBase<SocketType>::Response>, std::shared_ptr<typename ServerBase<SocketType>::Request>)> > > m_resource;
+
+    std::map<std::string, std::function<void(std::shared_ptr<typename ServerBase<SocketType>::Response>, std::shared_ptr<typename ServerBase<SocketType>::Request>)> > m_defaultResource;
+
+    std::function<void(std::shared_ptr<typename ServerBase<SocketType>::Request>, const error_code &)> m_onError;
+
+    std::function<void(std::unique_ptr<SocketType> &, std::shared_ptr<typename ServerBase<SocketType>::Request>)> m_onUpgrade;
+
+    /// If you have your own asio::io_service, store its pointer here before running start().
+    std::shared_ptr<asio::io_service> m_ioService;
+
+    /// If you know the server port in advance, use start() instead.
+    /// Returns assigned port. If io_service is not set, an internal io_service is created instead.
+    /// Call before accept_and_run().
+    unsigned short bind()
+    {
+        asio::ip::tcp::endpoint endpoint;
+        if (m_config.m_address.size() > 0) {
+            endpoint = asio::ip::tcp::endpoint(asio::ip::address::from_string(m_config.m_address), m_config.m_port);
+        } else {
+            endpoint = asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_config.m_port);
+        }
+
+        if (!m_ioService) {
+            m_ioService = std::make_shared<asio::io_service>();
+            m_internalIoService = true;
+        }
+
+        if (m_acceptor) {
+            m_acceptor = std::unique_ptr<asio::ip::tcp::acceptor>(new asio::ip::tcp::acceptor(*m_ioService));
+        }
+        m_acceptor->open(endpoint.protocol());
+        m_acceptor->set_option(asio::socket_base::reuse_address(m_config.m_reuseAddress));
+        m_acceptor->bind(endpoint);
+
+        afterBind();
+        return m_acceptor->local_endpoint().port();
+    }
+
+    /// If you know the server port in advance, use start() instead.
+    /// Accept requests, and if io_service was not set before calling bind(), run the internal io_service instead.
+    /// Call after bind().
+    void acceptAndRun()
+    {
+        m_acceptor->listen();
+        accept();
+
+        if (m_internalIoService) {
+            if (m_ioService->stopped()) {
+                m_ioService->reset();
+            }
+            // If thread_pool_size>1, start m_io_service.run() in (thread_pool_size-1) threads for thread-pooling
+            m_threads.clear();
+            for (size_t c = 1; c < m_config.m_threadPoolSize; ++c) {
+                m_threads.emplace_back([this]() {
+                    this->m_ioService->run();
+                        });
+            }
+
+            ///Main thread
+            if (m_config.m_threadPoolSize > 0) {
+                m_ioService->run();
+            }
+
+            ///Wait for the rest of the threads, if any, to finish as well
+            for (auto& t : m_threads) {
+                t.join();
+            }
+        }
+    }
+
+    ///@brief Start the server by calling bind and acceptAndRun()
+    void start()
+    {
+        bind();
+        acceptAndRun();
+    }
+
+    ///@brief Stop accepting new requests, and close current connections.
+    void stop() noexcept
+    {
+        if(m_acceptor) {
+            error_code ec;
+            m_acceptor->close(ec);
+
+            {
+                std::unique_lock<std::mutex> lock(*m_connectionsMutex);
+                for(auto &connection : *m_connections) {
+                    connection->close();
+                }
+                m_connections->clear();
+            }
+
+            if(m_internalIoService) {
+                m_ioService->stop();
+            }
+        }
+    }
+
+    virtual ~ServerBase() noexcept
+    {
+      m_handlerRunner->stop();
+      stop();
+    }
+
+protected:
+    bool m_internalIoService = false;
+    std::unique_ptr<asio::ip::tcp::acceptor> m_acceptor;
+    std::vector<std::thread> m_threads;
+    std::shared_ptr<std::unordered_set<Connection*> > m_connections;
+    std::shared_ptr<std::mutex> m_connectionsMutex;
+    std::shared_ptr<ScopeRunner> m_handlerRunner;
+
+    ServerBase(unsigned short port) noexcept
+        : m_config(port)
+        , m_connections(new std::unordered_set<Connection *>())
+        , m_connectionsMutex(new std::mutex())
+        , m_handlerRunner(new ScopeRunner())
+   {}
+
+    virtual void afterBind()
+    {}
+    virtual void accept() = 0;
+
+    template <typename... Args>
+    std::shared_ptr<Connection> createConnection(Args&&... args) noexcept
+    {
+        auto connections = m_connections;
+        auto connectionsMutex = m_connectionsMutex;
+        auto connection = std::shared_ptr<Connection>(
+                new Connection(m_handlerRunner, std::forward<Args>(args) ...),
+                    [connections, connectionsMutex] (Connection* connection) {
+                    std::unique_lock<std::mutex> lock(*connectionsMutex);
+                    auto it = connections->find(connection);
+                    if (it != connections.end()) {
+                        connections->erase(it);
+                    }
+                    delete connection;
+                });
+        {
+            std::unique_lock<std::mutex> lock(*connectionsMutex);
+            connections->emplace(connection.get());
+        }
+        return connection;
+
+    }
+
 };
 
 } //namespace server
