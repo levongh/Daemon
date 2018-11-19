@@ -7,8 +7,7 @@
  * @author Levon Ghukasyan
  */
 
-#include "utility.h"
-#include "httpserver.h"
+#include "server/httpserver.h"
 
 class Server
 {
