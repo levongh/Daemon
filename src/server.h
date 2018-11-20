@@ -7,7 +7,7 @@
  * @author Levon Ghukasyan
  */
 
-#include "server/httpserver.h"
+#include "server/serverbase.h"
 
 class Server
 {

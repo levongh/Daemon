@@ -107,6 +107,6 @@ protected:
 
 };
 
-#include "httpserver_impl.h"
+#include "serverbase_impl.h"
 
 } //namespace server
