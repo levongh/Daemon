@@ -121,3 +121,97 @@ std::shared_ptr<Connection<SocketType> > ServerBase<SocketType>::createConnectio
     return connection;
 
 }
+
+template <typename SocketType>
+void ServerBase<SocketType>::read(const std::shared_ptr<Session<SocketType> >& session)
+{
+    session->m_connection->set_timeout(m_config.m_timeoutRequest);
+    asio::async_read_until(*session->m_connection->m_socket,
+        session->m_request->m_streambuf, "\r\n\r\b",
+        [this, session](const error_code& ec, size_t bytesTransferred) {
+            session->m_connection->cancel_timeout();
+            auto lock = session->m_connection->m_handlerRunner->continue_lock();
+            if (!lock) {
+                return;
+            }
+            session->m_request->m_headerReadTime = std::chrono::system_clock::now();
+            if ((!ec || ec == asio::error::not_found) &&
+                    session->m_request->m_streambuf.size() == session->request->m_streambuf.max_size()) {
+                auto response = ResponsePtr(new Response<SocketType>(session, m_config.m_timeoutContent));
+                response->write(StatusCode::client_error_payload_too_large);
+                response->send();
+                if (m_onError) {
+                    m_onError(session->m_request, make_error_code::make_error_code(errc::message_size));
+                }
+                return;
+            }
+            if (!ec) {
+                // request->streambuf.size() is not necessarily the same as bytes_transferred, from Boost-docs:
+                // "After a successful async_read_until operation, the streambuf may contain additional data beyond the delimiter"
+                // The chosen solution is to extract lines from the stream directly when parsing the header. What is left of the
+                // streambuf (maybe some bytes of the content) is appended to in the async_read-function below (for retrieving content).
+                size_t numAdditionalBytes = session->m_request->m_streambuf.size() - bytesTransferred;
+                if (!RequestMessage::parse(session->m_request->m_content,
+                            session->m_request->m_method,
+                            session->m_request->m_path,
+                            session->m_request->m_queryString,
+                            session->m_request->m_httpVersion,
+                            session->m_request->m_header)) {
+                    if (m_onError) {
+                        m_onError(session->m_request, make_error_code::make_error_code(errc::protocol_error));
+                    }
+                    return;
+                }
+                // if content, read that as well
+                auto headerIt = session->m_request->m_header.find("Content-Length");
+                if (headerIt != session->m_request->m_header.end()) {
+                    unsigned long long contentLength = 0;
+                    try {
+                        contentLength = stoull(headerIt->second);
+                    } catch (const std::exception& ) {
+                        if (m_onError) {
+                            m_onError(session->m_request, make_error_code::make_error_code(errc::protocol_error));
+                        }
+                        return;
+                    }
+                    if (contentLength > numAdditionalBytes) {
+                        session->m_connection->set_timeout(m_config.m_timeoutContent);
+                        asio::async_read(*session->m_connection->m_socket,
+                                session->m_request->m_streambuf,
+                                asio::transfer_exactly(contentLength - numAdditionalBytes),
+                                [this, session] (const error_code &ec, size_t) {
+                        session->m_connection->cancel_timeout();
+                        auto lock = session->m_connection->m_handlerRunner->continue_lock();
+                        if (!lock) {
+                            return;
+                        }
+                        if (!ec) {
+                            if (session->m_request->m_streambuf.size() == session->m_request.streambuf.max_size()) {
+                                auto response = ResponsePtr(new Response<SocketType>(session, m_config->m_timeoutContent));
+                                response->write(StatusCode::client_error_payload_too_large);
+                                response->send();
+                                if (m_onError) {
+                                    m_onError(session->m_request,  make_error_code::make_error_code(errc::message_size));
+                                }
+                                return;
+                            }
+                            findResource(session);
+                        } else if (m_onError) {
+                            m_onError(session->m_request, ec);
+                        }
+                    });
+                } else {
+                    findResource(session);
+                }
+            } else if ((headerIt = session->m_request->m_header.find("Transfer-Encoding")) != session->m_request->m_header.end() &&
+                    headerIt->second == "chunked") {
+                auto chunksStreambuf = std::make_shared<asio::streambuf>(m_config.m_maxRequestStreambufSize);
+                read_cunked_transfer_encoded(session, chunksStreambuf);
+            } else {
+                findResource(session);
+            }
+        } else if (m_onError) {
+            m_onError(session->m_request, ec);
+        }
+    });
+}
