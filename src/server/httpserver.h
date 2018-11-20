@@ -63,19 +63,25 @@ protected:
     template <typename... Args>
     std::shared_ptr<Connection<SocketType> > createConnection(Args&&... args) noexcept;
 
+    void read(const std::shared_ptr<Session<SocketType> >& session);
+
 public:
     ///@brief Set before calling start().
     Config<SocketType> m_config;
+    using ResponsePtr   = std::shared_ptr<Response<SocketType> >;
+    using RequestPtr    = std::shared_ptr<Request<SocketType> >;
+    using Callback      = std::function<void(ResponsePtr, RequestPtr)>;
+    using StrToCallback = std::map<std::string, Callback>;
 
 public:
     ///@brief Warning: do not add or remove resources after start() is called
-    std::map<RegexOrderable, std::map<std::string, std::function<void(std::shared_ptr<typename ServerBase<SocketType>::Response>, std::shared_ptr<typename ServerBase<SocketType>::Request>)> > > m_resource;
+    std::map<RegexOrderable, StrToCallback> m_resource;
 
-    std::map<std::string, std::function<void(std::shared_ptr<typename ServerBase<SocketType>::Response>, std::shared_ptr<typename ServerBase<SocketType>::Request>)> > m_defaultResource;
+    StrToCallback m_defaultResource;
 
-    std::function<void(std::shared_ptr<typename ServerBase<SocketType>::Request>, const error_code &)> m_onError;
+    std::function<void(RequestPtr, const error_code&)> m_onError;
 
-    std::function<void(std::unique_ptr<SocketType> &, std::shared_ptr<typename ServerBase<SocketType>::Request>)> m_onUpgrade;
+    std::function<void(std::unique_ptr<SocketType> &, RequestPtr)> m_onUpgrade;
 
     /// If you have your own asio::io_service, store its pointer here before running start().
     std::shared_ptr<asio::io_service> m_ioService;
