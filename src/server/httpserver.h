@@ -16,6 +16,7 @@ namespace make_error_code = boost::system::errc;
 
 } //namespace server
 
+
 #include "../util/utility.h"
 
 ///@brief Server includes
@@ -34,6 +35,16 @@ namespace server {
 template <typename SocketType>
 class ServerBase
 {
+public:
+    ///@brief Set before calling start().
+    Config<SocketType> m_config;
+    using RequestPtr    = std::shared_ptr<Request<SocketType> >;
+    using ResponsePtr   = std::shared_ptr<Response<SocketType> >;
+    using Callback      = std::function<void(ResponsePtr, RequestPtr)>;
+    using SessionPtr    = std::shared_ptr<Session<SocketType> >;
+    using ConnectionPtr = std::shared_ptr<Connection<SocketType> >;
+    using StrToCallback = std::map<std::string, Callback>;
+
 public:
     /// If you know the server port in advance, use start() instead.
     /// Returns assigned port. If io_service is not set, an internal io_service is created instead.
@@ -61,18 +72,11 @@ protected:
     virtual void accept() = 0;
 
     template <typename... Args>
-    std::shared_ptr<Connection<SocketType> > createConnection(Args&&... args) noexcept;
+    ConnectionPtr createConnection(Args&&... args) noexcept;
 
-    void read(const std::shared_ptr<Session<SocketType> >& session);
-
-public:
-    ///@brief Set before calling start().
-    Config<SocketType> m_config;
-    using ResponsePtr   = std::shared_ptr<Response<SocketType> >;
-    using RequestPtr    = std::shared_ptr<Request<SocketType> >;
-    using Callback      = std::function<void(ResponsePtr, RequestPtr)>;
-    using StrToCallback = std::map<std::string, Callback>;
-
+    void read(const SessionPtr& session);
+    void readChunkedTransferEncoded(const SessionPtr &session,
+                                    const std::shared_ptr<asio::streambuf> &chunksStreambuf);
 public:
     ///@brief Warning: do not add or remove resources after start() is called
     std::map<RegexOrderable, StrToCallback> m_resource;
