@@ -77,6 +77,12 @@ protected:
     void read(const SessionPtr& session);
     void readChunkedTransferEncoded(const SessionPtr &session,
                                     const std::shared_ptr<asio::streambuf> &chunksStreambuf);
+    void readChunkedTransferEncodedChunk(const SessionPtr& session,
+                                         const std::shared_ptr<asio::streambuf> &chunksStreambuf,
+                                         unsigned long length);
+    void findResource(const SessionPtr& session);
+    void write(const SessionPtr& session, Callback &resourceFunction);
+
 public:
     ///@brief Warning: do not add or remove resources after start() is called
     std::map<RegexOrderable, StrToCallback> m_resource;
