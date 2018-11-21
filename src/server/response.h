@@ -23,11 +23,11 @@ public:
     ///@brief Use this function if you need to recursively send parts of a longer message
     void send(const std::function<void(const error_code&)>& callback = nullptr) noexcept
     {
-        m_session->connection->set_timeout(m_timeoutContent);
+        m_session->m_connection->set_timeout(m_timeoutContent);
         auto self = this->shared_from_this();  /// Keep Response instance alive through the following async_write
-        asio::async_write(*m_session->connection->socket, m_streambuf, [self, callback](const error_code &ec, std::size_t /*bytes_transferred*/) {
-                self->m_session->connection->cancel_timeout();
-                auto lock = self->m_session->connection->m_handlerRunner->continue_lock();
+        asio::async_write(*m_session->m_connection->m_socket, m_streambuf, [self, callback](const error_code &ec, std::size_t /*bytes_transferred*/) {
+                self->m_session->m_connection->cancel_timeout();
+                auto lock = self->m_session->m_connection->m_handlerRunner->continue_lock();
                 if(!lock)
                     return;
                 if(callback)

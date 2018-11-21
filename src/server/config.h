@@ -23,7 +23,7 @@ public:
     ///@brief Timeout on request handling. Defaults to 5 seconds
     long m_timeoutRequest = 5;
     ///@brief Timeout on content handling. Defaults to 300 seconds
-    long m_timeoutRequst = 300;
+    long m_timeoutContent = 300;
     /**
      * @brief Maximum size of request stream buffer. Defualts to architecture maximum.
      * Reacting this limit will result in a message size error code

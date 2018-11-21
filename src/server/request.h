@@ -58,8 +58,8 @@ private:
         : m_streambuf(maxRequestStreambufSize)
         , m_content(m_streambuf)
         , m_remoteEndpoint(std::move(remoteEndpoint))
-        {
-        }
+    {
+    }
 };
 
 } // namespace server

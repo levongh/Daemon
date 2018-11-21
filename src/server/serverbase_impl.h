@@ -109,8 +109,8 @@ auto ServerBase<SocketType>::createConnection(Args&&... args) noexcept -> Connec
             [connections, connectionsMutex] (Connection<SocketType>* connection) {
             std::unique_lock<std::mutex> lock(*connectionsMutex);
             auto it = connections->find(connection);
-            if (it != connections.end()) {
-            connections->erase(it);
+            if (it != connections->end()) {
+                connections->erase(it);
             }
             delete connection;
             });
@@ -136,7 +136,7 @@ void ServerBase<SocketType>::read(const SessionPtr& session)
             }
             session->m_request->m_headerReadTime = std::chrono::system_clock::now();
             if ((!ec || ec == asio::error::not_found) &&
-                    session->m_request->m_streambuf.size() == session->request->m_streambuf.max_size()) {
+                    session->m_request->m_streambuf.size() == session->m_request->m_streambuf.max_size()) {
                 auto response = ResponsePtr(new Response<SocketType>(session, m_config.m_timeoutContent));
                 response->write(StatusCode::client_error_payload_too_large);
                 response->send();
@@ -186,8 +186,8 @@ void ServerBase<SocketType>::read(const SessionPtr& session)
                             return;
                         }
                         if (!ec) {
-                            if (session->m_request->m_streambuf.size() == session->m_request.streambuf.max_size()) {
-                                auto response = ResponsePtr(new Response<SocketType>(session, m_config->m_timeoutContent));
+                            if (session->m_request->m_streambuf.size() == session->m_request->m_streambuf.max_size()) {
+                                auto response = ResponsePtr(new Response<SocketType>(session, m_config.m_timeoutContent));
                                 response->write(StatusCode::client_error_payload_too_large);
                                 response->send();
                                 if (m_onError) {
@@ -257,12 +257,12 @@ void ServerBase<SocketType>::readChunkedTransferEncoded(const SessionPtr& sessio
             auto numAdditionalBytes = session->m_request->m_streambuf.size() - bytesTransferred;
             if((2 + length) > numAdditionalBytes) {
                 session->m_connection->set_timeout(m_config.m_timeoutContent);
-                asio::async_read(*session->connection->socket,
-                                  session->request->streambuf,
+                asio::async_read(*session->m_connection->m_socket,
+                                  session->m_request->m_streambuf,
                                   asio::transfer_exactly(2 + length - numAdditionalBytes),
                                   [this, session, chunksStreambuf, length](const error_code &ec, size_t) {
-                    session->connection->cancel_timeout();
-                    auto lock = session->connection->handler_runner->continue_lock();
+                    session->m_connection->cancel_timeout();
+                    auto lock = session->m_connection->m_handlerRunner->continue_lock();
                     if(!lock) {
                         return;
                     }
@@ -312,14 +312,14 @@ void ServerBase<SocketType>::readChunkedTransferEncodedChunk(const SessionPtr& s
     }
 
     ///@brief Remove "\r\n"
-    session->request->content.get();
-    session->request->content.get();
+    session->m_request->m_content.get();
+    session->m_request->m_content.get();
 
     if(length > 0) {
         readChunkedTransferEncoded(session, chunksStreambuf);
     } else {
         if(chunksStreambuf->size() > 0) {
-            std::ostream ostream(&session->request->streambuf);
+            std::ostream ostream(&session->m_request->m_streambuf);
             ostream << chunksStreambuf.get();
         }
         findResource(session);
@@ -351,7 +351,7 @@ void ServerBase<SocketType>::findResource(const SessionPtr& session)
         if(it != regexMethod.second.end()) {
             regex::smatch smRes;
             if(regex::regex_match(session->m_request->m_path, smRes, regexMethod.first)) {
-                session->m_request->pathMatch = std::move(smRes);
+                session->m_request->m_pathMatch = std::move(smRes);
                 write(session, it->second);
                 return;
             }
@@ -369,7 +369,7 @@ void ServerBase<SocketType>::write(const SessionPtr& session,
 {
     session->m_connection->set_timeout(m_config.m_timeoutContent);
     auto response = ResponsePtr(new Response<SocketType>(session, m_config.m_timeoutContent),
-        [this](ResponsePtr *response_ptr) {
+        [this](Response<SocketType>* response_ptr) {
         auto response = ResponsePtr(response_ptr);
         response->send([this, response](const error_code &ec) {
             if(!ec) {
@@ -382,18 +382,18 @@ void ServerBase<SocketType>::write(const SessionPtr& session,
                     if(CaseInsensitiveEqual::caseInsensitiveEqual(it->second, "close")) {
                         return;
                     } else if(CaseInsensitiveEqual::caseInsensitiveEqual(it->second, "keep-alive")) {
-                        auto newSession = std::make_shared<Session>(m_config.m_maxRequestStreambufSize, response->m_session->m_connection);
+                        auto newSession = std::make_shared<Session<SocketType> >(m_config.m_maxRequestStreambufSize, response->m_session->m_connection);
                         read(newSession);
                         return;
                     }
                 }
                 if(response->m_session->m_request->m_httpVersion >= "1.1") {
-                    auto newSession = std::make_shared<Session>(m_config.m_maxRequestStreambufSize, response->m_session->m_connection);
+                    auto newSession = std::make_shared<Session<SocketType> >(m_config.m_maxRequestStreambufSize, response->m_session->m_connection);
                     this->read(newSession);
                     return;
                 }
-            } else if(this->on_error) {
-                this->on_error(response->session->request, ec);
+            } else if(m_onError) {
+                m_onError(response->m_session->m_request, ec);
             }
         });
     });
