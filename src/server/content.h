@@ -6,9 +6,13 @@ template <typename SocketType>
 class ServerBase;
 
 template <typename SocketType>
+class Request;
+
+template <typename SocketType>
 class Content : public std::istream
 {
     friend class ServerBase<SocketType>;
+    friend class Request<SocketType>;
 
 public:
     size_t size() noexcept
