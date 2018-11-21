@@ -6,7 +6,7 @@ DOXY       = ./docs/doxy
 OBJECTS    = $(SOURCES:.cpp:=.o)
 EXECUTABLE = Daemon 
 CPPFLAGS   = -O3 -std=c++14
-LDFLAGS    = -lboost_system
+LDFLAGS    = -lboost_system -lssl -lcrypto
 
 MOVED_OBJECTS =  $(addprefix $(OBJDIR)/, $(OBJECTS))
 

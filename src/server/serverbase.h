@@ -109,4 +109,9 @@ protected:
 
 #include "serverbase_impl.h"
 
+template <typename SocketType>
+class Server : public ServerBase<SocketType>
+{
+};
+
 } //namespace server
