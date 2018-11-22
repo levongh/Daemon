@@ -30,6 +30,56 @@ public:
     }
 
 protected:
+    void afterBind() override
+    {
+        if (m_setSessionIdContext) {
+            ///@brief Creating sessionIdContext from address:port but reversed due to small SSL_MAX_SSL_SESSION_ID_LENGTH
+            auto sessionIdContext = std::to_string(m_acceptor->local_endpoint().port()) + ':';
+            sessionIdContext.append(m_config.m_address.rbegin(), m_config.m_address.rend());
+            SSL_CTX_set_session_id_context(m_context.native_handle(), reinterpret_cast<const unsigned char*>(sessionIdContext.data()),
+                    std::min<size_t>(sessionIdContext.size(), SSL_MAX_SSL_SESSION_ID_LENGTH));
+        }
+    }
+
+    void accept() override
+    {
+        auto connection = createConnection(*m_ioService, m_context);
+        m_acceptor->async_accept(connection->m_socket->lowest_layer(),
+                [this, connection](const error_code& ec) {
+            auto lock = connection->m_handlerRunner->continue_lock();
+            if (!lock) {
+                return;
+            }
+            if (ec != asio::error::operation_aborted) {
+                this->accept();
+            }
+
+            auto session = std::make_shared<Session<HTTPS> >(m_config.m_maxRequestStreambufSize, connection);
+
+            if (!ec) {
+                asio::ip::tcp::no_delay option(true);
+                error_code ec;
+                session->m_connection->set_timeout(m_config.m_timeoutRequest);
+                session->m_connection->m_socket->async_handshake(asio::ssl::stream_base::server,
+                    [this, session] (const error_code& ec) {
+                        session->m_connection->cancel_timeout();
+                        auto lock = session->m_connection->m_handlerRunner->continue_lock();
+                        if (!lock) {
+                            return;
+                        }
+                        if (!ec) {
+                            this->read(session);
+                        } else if (m_onError) {
+                            m_onError(session->m_request, ec);
+                        }
+                });
+            } else if (m_onError) {
+                m_onError(session->m_request, ec);
+            }
+        });
+    }
+
+protected:
     asio::ssl::context m_context;
 
 private:
