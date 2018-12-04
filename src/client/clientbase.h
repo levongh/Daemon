@@ -17,9 +17,10 @@ namespace make_error_code = boost::system::errc;
 using string_view = const std::string&;
 
 
+#include "content.h"
+
 template<typename SocketType>
 class Client;
-
 
 template<typename SocketType>
 class ClientBase
