@@ -18,6 +18,8 @@ using string_view = const std::string&;
 
 
 #include "content.h"
+#include "response.h"
+#include "config.h"
 
 template<typename SocketType>
 class Client;
